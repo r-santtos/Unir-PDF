@@ -1,16 +1,71 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unir PDFs</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="script.js" defer></script>
 </head>
 <body>
     <h1>Unir PDFs</h1>
     <input type="file" id="fileInput" multiple accept=".pdf">
     <button id="mergeButton">Unir PDFs</button>
     <div id="output"></div>
+
+    <!-- Incluindo a biblioteca PDF-lib via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.16.0/dist/pdf-lib.min.js"></script>
+
+    <script>
+        document.getElementById('mergeButton').addEventListener('click', async function() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+
+            if (files.length < 2) {
+                alert('Selecione pelo menos dois arquivos PDF.');
+                return;
+            }
+
+            const mergedPdf = await PDFLib.PDFDocument.create();
+            const fileReader = new FileReader();
+
+            fileReader.onload = async function() {
+                for (let i = 0; i < files.length; i++) {
+                    let data = new Uint8Array(this.result);
+                    let pdf = await PDFLib.PDFDocument.load(data);
+                    let copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach((page) => {
+                        mergedPdf.addPage(page);
+                    });
+                }
+
+                const output = document.getElementById('output');
+                output.textContent = 'Unindo PDFs...';
+
+                const blob = await mergedPdf.save();
+                const fileName = getFormattedDate() + '_merged.pdf';
+                const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.textContent = 'Clique aqui para baixar o PDF unido';
+                output.innerHTML = '';
+                output.appendChild(link);
+            };
+
+            fileReader.readAsArrayBuffer(files[0]);
+        });
+
+        function getFormattedDate() {
+            let date = new Date();
+            let year = date.getFullYear();
+            let month = (date.getMonth() + 1).toString().padStart(2, '0');
+            let day = date.getDate().toString().padStart(2, '0');
+            let hours = date.getHours().toString().padStart(2, '0');
+            let minutes = date.getMinutes().toString().padStart(2, '0');
+            let seconds = date.getSeconds().toString().padStart(2, '0');
+            return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+        }
+    </script>
 </body>
 </html>
